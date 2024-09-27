@@ -1,5 +1,6 @@
 pipeline {
     agent any
+    echo 'cicd 1'
 
     // environment variable setting
     environment {
@@ -7,6 +8,7 @@ pipeline {
         LAST_COMMIT = ""
         TODAY = ""
     }
+    echo 'cicd 2'
 
     stages {
         stage('[Master] Jenkins variable setting') {
