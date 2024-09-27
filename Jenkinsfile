@@ -10,12 +10,9 @@ pipeline {
 
     stages {
         stage('[Master] Jenkins variable setting') {
-            echo 'cicd 1'
-
-            when {
-                branch 'master'
-            }
             steps {
+                echo 'cicd 1'
+
                 script {
                     // ------ use Folder Property plugin
                     // Jenkins variable setting
