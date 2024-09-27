@@ -8,9 +8,9 @@ pipeline {
 
     // environment variable setting
     environment {
-        PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
+        PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod:v1'
         LAST_COMMIT = ""
-        TODAY = new Date().format('yyyyMMdd')
+        VERSION = 'v1'
     }
 
     stages {
@@ -44,7 +44,7 @@ pipeline {
             steps {
                 script {
                     sh 'gradle clean build -Pprofile=real'
-                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${TODAY} ."
+                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${VERSION} ."
                 }
             }
         }
@@ -56,7 +56,7 @@ pipeline {
             steps {
                 script {
                     sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
-                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${TODAY}"
+                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${VERSION}"
                     sh "docker logout"
                 }
             }
