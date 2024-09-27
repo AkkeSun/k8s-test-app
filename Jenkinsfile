@@ -8,7 +8,7 @@ pipeline {
 
     // environment variable setting
     environment {
-        PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod:v1'
+        PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
         LAST_COMMIT = ""
         VERSION = 'v1'
     }
