@@ -5,7 +5,7 @@ pipeline {
     environment {
       PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
       LAST_COMMIT = ""
-      TODAY= java.time.LocalDate.now()
+      TODAY = new Date().format('yyyy-MM-dd')
     }
 
     stages {
