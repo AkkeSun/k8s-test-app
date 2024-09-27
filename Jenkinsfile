@@ -16,10 +16,9 @@ pipeline {
                 script {
                     // ------ use Folder Property plugin
                     // Jenkins variable setting
-                    wrap([$class: 'ParentFolderBuildWrapper']) {
-                        dockerUsername = "${env.DOCKER_USERNAME}"
-                        dockerPassword = "${env.DOCKER_PASSWORD}"
-                    }
+                    dockerUsername = 'akkessun'
+                    dockerPassword = "sunyang2ek"
+
 
                     // git last commit setting (for Slack Notification)
                     LAST_COMMIT = sh(returnStdout: true, script: "git log -1 --pretty=%B").trim()
