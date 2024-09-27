@@ -50,7 +50,7 @@ pipeline {
         steps {
             script {
                 sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
-                sh "docker push ${DOCKER_IMAGE_NAME}:${TODAY}"
+                sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${TODAY}"
                 sh "docker logout"
             }
         }
