@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: od-test-prod
+  name: od-test-prod-properties
+  labels:
+    part-of: od-test-prod
+    component: backend-server
+    name: od-test-prod
+    instance: od-test-prod
+    version: 1.0.0
+    managed-by: dashboard
+data:
+  username: "od-master"

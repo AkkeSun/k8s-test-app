@@ -1,0 +1,29 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  namespace: od-test-prod
+  name: od-test-prod-default
+  labels:
+    part-of: od-test-prod
+    component: backend-server
+    name: od-test-prod
+    instance: od-test-prod
+    version: 1.0.0
+    managed-by: dashboard
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: od-test-prod
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: od-test-prod-files
+  labels:
+    part-of: od-test-prod
+    component: backend-server
+    name: od-test-prod
+    instance: od-test-prod-files
+    version: 1.0.0
+    managed-by: dashboard
+spec:
+  capacity:
+    storage: 2G
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  local:
+    path: "/root/od-test/prod" # 저장소 위치 (미리 생성 필요)
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - {key: kubernetes.io/hostname, operator: In, values: [k8s-worker-01]}

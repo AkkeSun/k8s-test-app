@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: od-test-prod
+  labels:
+    part-of: od-test-prod
+    managed-by: kubectl
