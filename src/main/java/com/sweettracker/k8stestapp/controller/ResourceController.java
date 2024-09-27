@@ -18,8 +18,10 @@ public class ResourceController {
     private volatile boolean stopMemoryOverload = false;
 
     @GetMapping("/resource")
-    public void getData() {
-        log.info("hello - " + username);
+    public String getData() {
+        String data = "hello - " + username;
+        log.info(data);
+        return data;
     }
 
     @GetMapping("/cpu-overload")
