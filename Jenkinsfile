@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        gradle 'gradle-7.6.3'
+        jdk 'jdk-17'
+    }
     // environment variable setting
     environment {
         PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
