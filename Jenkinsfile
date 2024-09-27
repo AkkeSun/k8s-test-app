@@ -5,7 +5,7 @@ pipeline {
     environment {
         PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
         LAST_COMMIT = ""
-        TODAY = ""
+        TODAY = new Date().format('yyyyMMdd')
     }
 
     stages {
@@ -14,8 +14,6 @@ pipeline {
                 branch 'master'
             }
             steps {
-                echo 'cicd 1'
-
                 script {
                     // ------ use Folder Property plugin
                     // Jenkins variable setting
@@ -33,7 +31,7 @@ pipeline {
             }
         }
 
-        stage('[Master] Jar & image Build') {
+        stage('[Master] Jar & Image Build') {
             when {
                 branch 'master'
             }
