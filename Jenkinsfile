@@ -10,7 +10,7 @@ pipeline {
     environment {
         PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
         LAST_COMMIT = ""
-        VERSION = 'v1'
+        NOW_TIME = sh(script: 'date +%Y%m%d%H%M', returnStdout: true).trim()
     }
 
     stages {
@@ -44,7 +44,7 @@ pipeline {
             steps {
                 script {
                     sh 'gradle clean build -Pprofile=real'
-                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${VERSION} ."
+                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${NOW_TIME} ."
                 }
             }
         }
@@ -56,8 +56,29 @@ pipeline {
             steps {
                 script {
                     sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
-                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${VERSION}"
+                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}"
                     sh "docker logout"
+                }
+            }
+        }
+
+        stage('[Master] k8s deploy') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                  sh """
+                     sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' deployment.yaml
+                  """
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/namespace.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/pv.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/pvc.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/configmap.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/service.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/hpa.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/deployment.yaml'
+
                 }
             }
         }
