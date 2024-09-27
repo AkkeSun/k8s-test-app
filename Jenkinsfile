@@ -2,9 +2,10 @@ pipeline {
     agent any
 
     tools {
-        gradle 'gradle-7.6.3'
+        gradle 'gradle-8.8'
         jdk 'jdk-17'
     }
+
     // environment variable setting
     environment {
         PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
@@ -13,6 +14,7 @@ pipeline {
     }
 
     stages {
+
         stage('[Master] Jenkins variable setting') {
             when {
                 branch 'master'
