@@ -14,6 +14,8 @@ pipeline {
                 branch 'master'
             }
             steps {
+                echo 'cicd 1'
+
                 script {
                     // ------ use Folder Property plugin
                     // Jenkins variable setting
@@ -30,33 +32,32 @@ pipeline {
                 }
             }
         }
-    }
 
-    stage('[Master] Jar & image Build') {
-        when {
-            branch 'master'
+        stage('[Master] Jar & image Build') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    sh 'gradle clean build -Pprofile=real'
+                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${TODAY} ."
+                }
+            }
         }
-        steps {
-            script {
-                sh 'gradle clean build -Pprofile=real'
-                sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${TODAY} ."
+
+        stage('[Master] Docker Hub deploy') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
+                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${TODAY}"
+                    sh "docker logout"
+                }
             }
         }
     }
-
-    stage('[Master] Docker Hub deploy') {
-        when {
-            branch 'master'
-        }
-        steps {
-            script {
-                sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
-                sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${TODAY}"
-                sh "docker logout"
-            }
-        }
-    }
-
 
     /*
     // ------ use Slack Notification plugin
