@@ -5,12 +5,14 @@ pipeline {
     environment {
         PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
         LAST_COMMIT = ""
-        TODAY = new Date().format('yyyy-MM-dd')
+        TODAY = ""
     }
 
     stages {
         stage('[Master] Jenkins variable setting') {
-
+            when {
+                branch 'master'
+            }
             steps {
                 script {
                     // ------ use Folder Property plugin
