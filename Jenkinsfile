@@ -10,15 +10,19 @@ pipeline {
 
     stages {
         stage('[Master] Jenkins variable setting') {
+            when {
+                branch 'master'
+            }
             steps {
                 echo 'cicd 1'
 
                 script {
                     // ------ use Folder Property plugin
                     // Jenkins variable setting
-                    dockerUsername = 'akkessun'
-                    dockerPassword = "sunyang2ek"
-
+                    wrap([$class: 'ParentFolderBuildWrapper']) {
+                        dockerUsername = "${env.DOCKER_USERNAME}"
+                        dockerPassword = "${env.DOCKER_PASSWORD}"
+                    }
 
                     // git last commit setting (for Slack Notification)
                     LAST_COMMIT = sh(returnStdout: true, script: "git log -1 --pretty=%B").trim()
@@ -28,32 +32,33 @@ pipeline {
                 }
             }
         }
+    }
 
-        stage('[Master] Jar & image Build') {
-            when {
-                branch 'master'
-            }
-            steps {
-                script {
-                    sh 'gradle clean build -Pprofile=real'
-                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${TODAY} ."
-                }
-            }
+    stage('[Master] Jar & image Build') {
+        when {
+            branch 'master'
         }
-
-        stage('[Master] Docker Hub deploy') {
-            when {
-                branch 'master'
-            }
-            steps {
-                script {
-                    sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
-                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${TODAY}"
-                    sh "docker logout"
-                }
+        steps {
+            script {
+                sh 'gradle clean build -Pprofile=real'
+                sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${TODAY} ."
             }
         }
     }
+
+    stage('[Master] Docker Hub deploy') {
+        when {
+            branch 'master'
+        }
+        steps {
+            script {
+                sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
+                sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${TODAY}"
+                sh "docker logout"
+            }
+        }
+    }
+
 
     /*
     // ------ use Slack Notification plugin
