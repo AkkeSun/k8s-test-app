@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: od-test-prod
+  name: od-test-prod-2 # change
+  labels:
+    part-of: od-test-prod
+    component: backend-server
+    name: od-test-prod
+    instance: od-test-prod
+    version: 1.0.0
+    managed-by: dashboard
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+     maxSurge: 1
+     maxUnavailable: 1
+
+  selector:
+    matchLabels:
+      part-of: od-test-prod
+      component: backend-server
+      name: od-test-prod
+      instance: od-test-prod
+  replicas: 2
+
+  template:
+    metadata:
+      labels:
+        part-of: od-test-prod
+        component: backend-server
+        name: od-test-prod
+        instance: od-test-prod
+        version: 1.0.0
+        blue-green-no: 2  # change
+    spec:
+     nodeSelector:
+      kubernetes.io/hostname: k8s-worker-01
+     containers:
+        - name: od-test-prod-1  # change
+          image: akkessun/od-test-prod:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: od-test-prod-properties
+
+          startupProbe:
+            httpGet:
+              path: "/startup"
+              port: 8080
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 36
+
+          readinessProbe:
+            httpGet:
+              path: "/readiness"
+              port: 8080
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+
+          livenessProbe:
+           httpGet:
+            path: "/liveness"
+            port: 8080
+           periodSeconds: 10
+           successThreshold: 1
+           failureThreshold: 5
+
+          resources:
+            requests:
+             memory: "100Mi"
+             cpu: "100m"
+            limits:
+             memory: "200Mi"
+             cpu: "200m"

@@ -17,7 +17,7 @@ pipeline {
 
         stage('[Master] Jenkins variable setting') {
             when {
-                branch 'master'
+                branch 'master-blue_green'
             }
             steps {
                 script {
@@ -39,46 +39,97 @@ pipeline {
 
         stage('[Master] Jar & Image Build') {
             when {
-                branch 'master'
+                branch 'master-blue_green'
             }
             steps {
                 script {
                     sh 'gradle clean build -Pprofile=real'
-                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${NOW_TIME} ."
+                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:latest ."
                 }
             }
         }
 
         stage('[Master] Docker Hub deploy') {
             when {
-                branch 'master'
+                branch 'master-blue_green'
             }
             steps {
                 script {
                     sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
-                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}"
+                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:latest"
                     sh "docker logout"
                 }
             }
         }
 
-        stage('[Master] k8s deploy') {
+        stage('[Master] k8s blue deploy') {
             when {
-                branch 'master'
+                branch 'master-blue_green'
             }
             steps {
                 script {
-                  sh """
-                     sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/deployment.yaml
-                  """
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/namespace.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/pv.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/pvc.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/configmap.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/service.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/hpa.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/deployment.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/namespace.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/configmap.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/service.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/hpa.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/deployment.yaml'
+                }
+            }
+        }
 
+        stage('[Master] k8s green deploy check') {
+            when {
+                branch 'master-blue_green'
+            }
+            steps {
+                input message: 'green deploy start', ok: "Yes"
+            }
+        }
+
+        stage('[Master] k8s green deploy') {
+            when {
+                branch 'master-blue_green'
+            }
+            steps {
+                script {
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/green/deployment.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/green/service.yaml'
+                }
+            }
+        }
+
+        stage('[Master] k8s traffic change (blue -> green)') {
+            when {
+                branch 'master-blue_green'
+            }
+            steps {
+                script {
+                    returnValue = input message: 'traffic change (blue -> green)', ok: "Yes", parameters: [booleanParam(defaultValue: true, name: 'IS_SWITCHED')]
+                    if (returnValue) {
+                        // od-test-prod 네임스페이스에서 od-test-prod-1 이름의 서비스를 찾습니다.
+                        // 서비스의 spec.selector를 blue-green-no=2로 변경하여, 이제 해당 서비스는 blue-green-no 라벨이 2로 설정된 파드를 선택합니다.
+                        sh "kubectl patch -n od-test-prod svc od-test-prod-1 -p '{\"spec\": {\"selector\": {\"blue-green-no\": 2}}}'"
+                    }
+                }
+            }
+        }
+
+        stage('[Master] k8s rollback check') {
+            when {
+                branch 'master-blue_green'
+            }
+            steps {
+                script {
+                    returnValue = input message: 'needs rollback?', parameters: [choice(choices: ['done', 'rollback'], name: 'IS_ROLLBACk')]
+                    if (returnValue == "done") {
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/blue/deployment.yaml"
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/green/service.yaml"
+                    }
+                    if (returnValue == "rollback") {
+                        sh "kubectl patch -n od-test-prod svc od-test-prod-1 -p '{\"spec\": {\"selector\": {\"blue-green-no\": \"1\"}}}'"
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/green/deployment.yaml"
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/green/service.yaml"
+                    }
                 }
             }
         }
