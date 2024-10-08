@@ -44,7 +44,7 @@ pipeline {
             steps {
                 script {
                     sh 'gradle clean build -Pprofile=real'
-                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:latest ."
+                    sh "docker build -t ${env.PROD_DOCKER_IMAGE_NAME}:${NOW_TIME} ."
                 }
             }
         }
@@ -56,12 +56,13 @@ pipeline {
             steps {
                 script {
                     sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
-                    sh "docker push ${PROD_DOCKER_IMAGE_NAME}:latest"
+                    sh "docker push ${env.PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}"
                     sh "docker logout"
                 }
             }
         }
 
+        /*
         stage('[Master] k8s blue deploy') {
             when {
                 branch 'master-blue_green'
@@ -85,6 +86,7 @@ pipeline {
                 input message: 'green deploy start', ok: "Yes"
             }
         }
+        */
 
         stage('[Master] k8s green deploy') {
             when {
@@ -92,6 +94,9 @@ pipeline {
             }
             steps {
                 script {
+                  sh """
+                     sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/green/deployment.yaml
+                  """
                   sh 'kubectl apply -f ./src/main/deployment/real/k8s/green/deployment.yaml'
                   sh 'kubectl apply -f ./src/main/deployment/real/k8s/green/service.yaml'
                 }
