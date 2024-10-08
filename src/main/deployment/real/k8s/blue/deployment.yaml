@@ -33,7 +33,7 @@ spec:
         name: od-test-prod
         instance: od-test-prod
         version: 1.0.0
-        blue-green-no: 1
+        blue-green-no: "1"
     spec:
      nodeSelector:
       kubernetes.io/hostname: k8s-worker-01

@@ -16,7 +16,7 @@ spec:
     component: backend-server
     name: od-test-prod
     instance: od-test-prod
-    blue-green-no: 1
+    blue-green-no: "1"
   ports:
     - port: 80
       targetPort: http
