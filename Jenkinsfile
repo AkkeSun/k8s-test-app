@@ -140,7 +140,7 @@ pipeline {
                     }
 
                     if (returnValue == "rollback") {
-                        sh "kubectl patch -n od-test-prod svc od-test-prod-${currentVersion}  -p '{\"spec\": {\"selector\": {\"blue-green\": \"${currentVersion}\"}}}'"
+                        sh "kubectl patch -n od-test-prod svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${currentVersion}\"}}}'"
                         sh "kubectl delete -f ./src/main/deployment/real/k8s/${nextVersion}/deployment.yaml"
                     }
                 }
