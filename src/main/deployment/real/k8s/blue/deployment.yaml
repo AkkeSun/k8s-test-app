@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: od-test-prod
-  name: od-test-prod-1
+  name: od-test-prod
   labels:
     part-of: od-test-prod
     component: backend-server
@@ -33,10 +33,15 @@ spec:
         name: od-test-prod
         instance: od-test-prod
         version: 1.0.0
-        blue-green-no: "1"
+        blue-green: "blue"
     spec:
-     nodeSelector:
-      kubernetes.io/hostname: k8s-worker-01
+     topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            name: od-test-prod
      containers:
         - name: od-test-prod-1
           image: akkessun/od-test-prod:latest

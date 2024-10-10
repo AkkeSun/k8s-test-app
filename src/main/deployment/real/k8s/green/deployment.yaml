@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: od-test-prod
-  name: od-test-prod-2 # change
+  name: od-test-prod-sub # change
   labels:
     part-of: od-test-prod
     component: backend-server
@@ -23,7 +23,7 @@ spec:
       component: backend-server
       name: od-test-prod
       instance: od-test-prod
-  replicas: 2
+  replicas: 3
 
   template:
     metadata:
@@ -33,11 +33,16 @@ spec:
         name: od-test-prod
         instance: od-test-prod
         version: 1.0.0
-        blue-green-no: "2"  # change
+        blue-green: "green"  # change
     spec:
-     nodeSelector:
-      kubernetes.io/hostname: k8s-worker-01
-     containers:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              name: od-test-prod
+      containers:
         - name: od-test-prod-1  # change
           image: akkessun/od-test-prod:latest
           ports:
