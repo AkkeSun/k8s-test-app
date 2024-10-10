@@ -63,6 +63,7 @@ pipeline {
                     sh "docker login -u ${dockerUsername} -p ${dockerPassword}"
                     sh "docker push ${env.PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}"
                     sh "docker logout"
+                    sh "docker rmi ${env.PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}"
                 }
             }
         }
