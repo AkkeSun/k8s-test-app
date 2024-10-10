@@ -73,11 +73,11 @@ pipeline {
             }
             steps {
                 script {
-                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/namespace.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/configmap.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/service.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/hpa.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/deployment.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/namespace.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/configmap.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/service.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/hpa.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/deployment.yaml'
                 }
             }
         }
