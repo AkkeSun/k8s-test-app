@@ -1,4 +1,4 @@
-FROM openjdk:17-oracle
+FROM openjdk:17-alpine
 ARG JAR_FILE=/build/libs/k8sTestApp.jar
 COPY ${JAR_FILE} app.jar
 ENV username default
