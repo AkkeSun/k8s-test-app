@@ -68,6 +68,7 @@ pipeline {
             }
         }
 
+       /*
         stage('[Master] k8s main deploy (최초 배포에만 호출하세요)') {
             when {
                 branch 'master-blue_green'
@@ -86,6 +87,7 @@ pipeline {
                 }
             }
         }
+        */
 
         stage('[Master] k8s next deploy') {
             when {
