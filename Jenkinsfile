@@ -28,7 +28,7 @@ pipeline {
                         dockerPassword = "${env.DOCKER_PASSWORD}"
                     }
                     currentVersion = sh(script: """
-                        if kubectl get svc od-test-prod-green -n od-test-prod >/dev/null 2>&1; then
+                        if kubectl get deploy od-test-prod-green -n od-test-prod >/dev/null 2>&1; then
                             echo 'green'
                         else
                             echo 'blue'
