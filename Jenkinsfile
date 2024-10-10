@@ -11,10 +11,6 @@ pipeline {
         PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
         LAST_COMMIT = ""
         NOW_TIME = sh(script: 'date +%Y%m%d%H%M', returnStdout: true).trim()
-
-        CURRENT_VERSION = sh(script: """
-            kubectl get svc od-test-prod -n od-test-prod -o=jsonpath='{.spec.selector.blue-green}' || echo 'blue'
-        """, returnStdout: true).trim()
     }
 
     stages {
@@ -31,10 +27,20 @@ pipeline {
                         dockerUsername = "${env.DOCKER_USERNAME}"
                         dockerPassword = "${env.DOCKER_PASSWORD}"
                     }
+                    currentVersion = sh(script: """
+                        if kubectl get svc od-test-prod-green -n od-test-prod >/dev/null 2>&1; then
+                            echo 'green'
+                        else
+                            echo 'blue'
+                        fi
+                    """, returnStdout: true).trim()
+
+                    nextVersion = currentVersion == "blue" ? "green" : "blue"
 
                     // git last commit setting (for Slack Notification)
                     LAST_COMMIT = sh(returnStdout: true, script: "git log -1 --pretty=%B").trim()
-                    echo '[current version] ' + CURRENT_VERSION
+                    echo '[current version] ' + currentVersion
+                    echo '[next version] ' + nextVersion
                     echo '[dockerUsername] ' + dockerUsername
                     echo '[dockerPassword] ' + dockerPassword
                     echo '[last commit] ' + LAST_COMMIT
@@ -75,7 +81,6 @@ pipeline {
             }
             steps {
                 script {
-
                   sh """
                       sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/blue/deployment.yaml
                   """
@@ -98,8 +103,8 @@ pipeline {
                   NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
 
                   sh """
-                      sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml
-                      sed -i 's|blue-green:.*|blue-green: "${NEXT_VERSION}"|' ./src/main/deployment/real/k8s/test/service.yaml
+                      sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/${nextVersion}/deployment.yaml
+                      sed -i 's|blue-green:.*|blue-green: "${nextVersion}"|' ./src/main/deployment/real/k8s/test/service.yaml
                   """
                   sh "kubectl apply -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
                   sh "kubectl apply -f ./src/main/deployment/real/k8s/test/service.yaml"
@@ -115,11 +120,11 @@ pipeline {
                 script {
                     NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
 
-                    isTrafficChange = input message: "Switch traffic to version ${NEXT_VERSION}?", ok: "Yes"
+                    isTrafficChange = input message: "Switch traffic to version ${nextVersion}?", ok: "Yes"
                     if (isTrafficChange) {
-                        // od-test-prod 네임스페이스에서 od-test-prod-${NEXT_VERSION} 이름의 서비스를 찾습니다.
-                        // 서비스의 spec.selector를 blue-green 값을 NEXT_VERSION 값으로 변경하여 새로 배포한 deployment 를 바라보게 합니다
-                    sh "kubectl patch -n od-test-prod svc od-test-prod-${CURRENT_VERSION} -p '{\"spec\": {\"selector\": {\"blue-green\": \"${NEXT_VERSION}\"}}}'"
+                        // od-test-prod 네임스페이스에서 od-test-prod-${currentVersion} 이름의 서비스를 찾습니다.
+                        // 서비스의 spec.selector를 blue-green 값을 nextVersion 값으로 변경하여 새로 배포한 deployment 를 바라보게 합니다
+                    sh "kubectl patch -n od-test-prod svc od-test-prod-${currentVersion} -p '{\"spec\": {\"selector\": {\"blue-green\": \"${nextVersion}\"}}}'"
                     }
                 }
             }
@@ -136,12 +141,12 @@ pipeline {
                     sh "kubectl delete -f ./src/main/deployment/real/k8s/test/service.yaml"
 
                     if (returnValue == "done") {
-                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${CURRENT_VERSION}/deployment.yaml"
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${currentVersion}/deployment.yaml"
                     }
 
                     if (returnValue == "rollback") {
-                        sh "kubectl patch -n od-test-prod svc od-test-prod-${CURRENT_VERSION}  -p '{\"spec\": {\"selector\": {\"blue-green\": \"${CURRENT_VERSION}\"}}}'"
-                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
+                        sh "kubectl patch -n od-test-prod svc od-test-prod-${currentVersion}  -p '{\"spec\": {\"selector\": {\"blue-green\": \"${currentVersion}\"}}}'"
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${nextVersion}/deployment.yaml"
                     }
                 }
             }
