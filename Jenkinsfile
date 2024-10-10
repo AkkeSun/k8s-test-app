@@ -116,9 +116,8 @@ pipeline {
             }
             steps {
                 script {
-                    returnValue = input message: "Switch traffic to version ${nextVersion}?", ok: "Yes"
+                    returnValue = input message: 'traffic change', ok: "Yes", parameters: [booleanParam(defaultValue: true, name: 'IS_SWITCHED')]
                     if (returnValue) {
-                        echo 'traffic change start'
                         // od-test-prod 네임스페이스에서 od-test-prod 이름의 서비스를 찾습니다.
                         // 서비스의 spec.selector를 blue-green 값을 nextVersion 값으로 변경하여 새로 배포한 deployment 를 바라보게 합니다
                         sh "kubectl patch -n od-test-prod svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${nextVersion}\"}}}'"
