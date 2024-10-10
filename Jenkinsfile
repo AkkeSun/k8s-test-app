@@ -15,7 +15,6 @@ pipeline {
         CURRENT_VERSION = sh(script: """
             kubectl get svc od-test-prod -n od-test-prod -o=jsonpath='{.spec.selector.blue-green}' || echo 'blue'
         """, returnStdout: true).trim()
-        NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
     }
 
     stages {
@@ -36,7 +35,6 @@ pipeline {
                     // git last commit setting (for Slack Notification)
                     LAST_COMMIT = sh(returnStdout: true, script: "git log -1 --pretty=%B").trim()
                     echo '[current version] ' + CURRENT_VERSION
-                    echo '[next version] ' + NEXT_VERSION
                     echo '[dockerUsername] ' + dockerUsername
                     echo '[dockerPassword] ' + dockerPassword
                     echo '[last commit] ' + LAST_COMMIT
@@ -90,6 +88,8 @@ pipeline {
             }
             steps {
                 script {
+                  NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
+
                   sh """
                       sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml
                   """
@@ -105,6 +105,8 @@ pipeline {
             }
             steps {
                 script {
+                    NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
+
                     isTrafficChange = input message: "Switch traffic to version ${NEXT_VERSION}?", ok: "Yes"
                     if (isTrafficChange) {
                         // od-test-prod 네임스페이스에서 od-test-prod 이름의 서비스를 찾습니다.
@@ -122,6 +124,7 @@ pipeline {
             steps {
                 script {
                     returnValue = input message: 'Needs rollback?', parameters: [choice(choices: ['done', 'rollback'], name: 'IS_ROLLBACK')]
+                    NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
 
                     if (returnValue == "done") {
                         sh "kubectl delete -f ./src/main/deployment/real/k8s/${CURRENT_VERSION}/deployment.yaml"
