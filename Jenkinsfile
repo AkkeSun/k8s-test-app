@@ -68,7 +68,6 @@ pipeline {
             }
         }
 
-       /*
         stage('[Master] k8s main deploy (최초 배포에만 호출하세요)') {
             when {
                 branch 'master-blue_green'
@@ -87,7 +86,6 @@ pipeline {
                 }
             }
         }
-        */
 
         stage('[Master] k8s next deploy') {
             when {
@@ -119,7 +117,7 @@ pipeline {
                     if (isTrafficChange) {
                         // od-test-prod 네임스페이스에서 od-test-prod-${NEXT_VERSION} 이름의 서비스를 찾습니다.
                         // 서비스의 spec.selector를 blue-green 값을 NEXT_VERSION 값으로 변경하여 새로 배포한 deployment 를 바라보게 합니다
-                    sh "kubectl patch -n od-test-prod-${CURRENT_VERSION} svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${NEXT_VERSION}\"}}}'"
+                    sh "kubectl patch -n od-test-prod svc od-test-prod-${CURRENT_VERSION} -p '{\"spec\": {\"selector\": {\"blue-green\": \"${NEXT_VERSION}\"}}}'"
                     }
                 }
             }
