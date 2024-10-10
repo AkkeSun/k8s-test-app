@@ -74,6 +74,10 @@ pipeline {
             }
             steps {
                 script {
+
+                  sh """
+                      sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/blue/deployment.yaml
+                  """
                   sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/namespace.yaml'
                   sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/configmap.yaml'
                   sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/service.yaml'
