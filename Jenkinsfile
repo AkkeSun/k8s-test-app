@@ -115,23 +115,25 @@ pipeline {
             }
         }
 
-stage('[Master] k8s deploy check') {
-    when {
-        branch 'master-blue_green'
-    }
-    steps {
-        script {
-            returnValue = input message: 'Needs rollback?', parameters: [choice(choices: ['done', 'rollback'], name: 'IS_ROLLBACK')]
-
-            if (returnValue == "done") {
-                sh "kubectl delete -f ./src/main/deployment/real/k8s/${CURRENT_VERSION}/deployment.yaml"
-                sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
+        stage('[Master] k8s deploy check') {
+            when {
+                branch 'master-blue_green'
             }
+            steps {
+                script {
+                    returnValue = input message: 'Needs rollback?', parameters: [choice(choices: ['done', 'rollback'], name: 'IS_ROLLBACK')]
 
-            if (returnValue == "rollback") {
-                sh "kubectl patch -n od-test-prod svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${CURRENT_VERSION}\"}}}'"
-                sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
-                sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
+                    if (returnValue == "done") {
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${CURRENT_VERSION}/deployment.yaml"
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
+                    }
+
+                    if (returnValue == "rollback") {
+                        sh "kubectl patch -n od-test-prod svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${CURRENT_VERSION}\"}}}'"
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
+                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
+                    }
+                }
             }
         }
     }
