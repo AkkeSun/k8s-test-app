@@ -104,7 +104,7 @@ pipeline {
                       sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/${nextVersion}/deployment.yaml
                       sed -i 's|blue-green:.*|blue-green: "${nextVersion}"|' ./src/main/deployment/real/k8s/test/service.yaml
                   """
-                  sh "kubectl apply -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
+                  sh "kubectl apply -f ./src/main/deployment/real/k8s/${nextVersion}/deployment.yaml"
                   sh "kubectl apply -f ./src/main/deployment/real/k8s/test/service.yaml"
                 }
             }
