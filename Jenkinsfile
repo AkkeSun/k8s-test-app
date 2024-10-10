@@ -100,8 +100,6 @@ pipeline {
             }
             steps {
                 script {
-                  NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
-
                   sh """
                       sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/${nextVersion}/deployment.yaml
                       sed -i 's|blue-green:.*|blue-green: "${nextVersion}"|' ./src/main/deployment/real/k8s/test/service.yaml
@@ -118,8 +116,6 @@ pipeline {
             }
             steps {
                 script {
-                    NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
-
                     isTrafficChange = input message: "Switch traffic to version ${nextVersion}?", ok: "Yes"
                     if (isTrafficChange) {
                         // od-test-prod 네임스페이스에서 od-test-prod-${currentVersion} 이름의 서비스를 찾습니다.
@@ -137,7 +133,6 @@ pipeline {
             steps {
                 script {
                     returnValue = input message: 'Needs rollback?', parameters: [choice(choices: ['done', 'rollback'], name: 'IS_ROLLBACK')]
-                    NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
                     sh "kubectl delete -f ./src/main/deployment/real/k8s/test/service.yaml"
 
                     if (returnValue == "done") {
