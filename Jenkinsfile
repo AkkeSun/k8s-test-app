@@ -93,9 +93,10 @@ pipeline {
 
                   sh """
                       sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml
+                      sed -i 's|blue-green:.*|blue-green: "${NEXT_VERSION}"|' ./src/main/deployment/real/k8s/test/service.yaml
                   """
                   sh "kubectl apply -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
-                  sh "kubectl apply -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
+                  sh "kubectl apply -f ./src/main/deployment/real/k8s/test/service.yaml"
                 }
             }
         }
@@ -110,9 +111,9 @@ pipeline {
 
                     isTrafficChange = input message: "Switch traffic to version ${NEXT_VERSION}?", ok: "Yes"
                     if (isTrafficChange) {
-                        // od-test-prod 네임스페이스에서 od-test-prod 이름의 서비스를 찾습니다.
-                        // 서비스의 spec.selector를 blue-green 값을 sub 값으로 변경하여 이제 sub 에 배포한 deployment 를 바라보게 합니다
-                    sh "kubectl patch -n od-test-prod svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${NEXT_VERSION}\"}}}'"
+                        // od-test-prod 네임스페이스에서 od-test-prod-${NEXT_VERSION} 이름의 서비스를 찾습니다.
+                        // 서비스의 spec.selector를 blue-green 값을 NEXT_VERSION 값으로 변경하여 새로 배포한 deployment 를 바라보게 합니다
+                    sh "kubectl patch -n od-test-prod-${CURRENT_VERSION} svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${NEXT_VERSION}\"}}}'"
                     }
                 }
             }
@@ -126,16 +127,15 @@ pipeline {
                 script {
                     returnValue = input message: 'Needs rollback?', parameters: [choice(choices: ['done', 'rollback'], name: 'IS_ROLLBACK')]
                     NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
+                    sh "kubectl delete -f ./src/main/deployment/real/k8s/test/service.yaml"
 
                     if (returnValue == "done") {
                         sh "kubectl delete -f ./src/main/deployment/real/k8s/${CURRENT_VERSION}/deployment.yaml"
-                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
                     }
 
                     if (returnValue == "rollback") {
-                        sh "kubectl patch -n od-test-prod svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${CURRENT_VERSION}\"}}}'"
+                        sh "kubectl patch -n od-test-prod svc od-test-prod-${CURRENT_VERSION}  -p '{\"spec\": {\"selector\": {\"blue-green\": \"${CURRENT_VERSION}\"}}}'"
                         sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
-                        sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
                     }
                 }
             }
