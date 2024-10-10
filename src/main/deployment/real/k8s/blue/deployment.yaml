@@ -23,7 +23,7 @@ spec:
       component: backend-server
       name: od-test-prod
       instance: od-test-prod
-  replicas: 2
+  replicas: 3
 
   template:
     metadata:
