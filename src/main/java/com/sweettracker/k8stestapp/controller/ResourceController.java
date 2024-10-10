@@ -19,7 +19,7 @@ public class ResourceController {
 
     @GetMapping("/resource")
     public String getData() {
-        String data = "hello - v4 " + username;
+        String data = "hello - v5 " + username;
         log.info(data);
         return data;
     }
