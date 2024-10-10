@@ -11,6 +11,11 @@ pipeline {
         PROD_DOCKER_IMAGE_NAME = 'akkessun/od-test-prod'
         LAST_COMMIT = ""
         NOW_TIME = sh(script: 'date +%Y%m%d%H%M', returnStdout: true).trim()
+
+        CURRENT_VERSION = sh(script: """
+            kubectl get svc od-test-prod -n od-test-prod -o=jsonpath='{.spec.selector.blue-green}' || echo 'blue'
+        """, returnStdout: true).trim()
+        NEXT_VERSION = CURRENT_VERSION == "blue" ? "green" : "blue"
     }
 
     stages {
@@ -30,6 +35,8 @@ pipeline {
 
                     // git last commit setting (for Slack Notification)
                     LAST_COMMIT = sh(returnStdout: true, script: "git log -1 --pretty=%B").trim()
+                    echo '[current version] ' + CURRENT_VERSION
+                    echo '[next version] ' + NEXT_VERSION
                     echo '[dockerUsername] ' + dockerUsername
                     echo '[dockerPassword] ' + dockerPassword
                     echo '[last commit] ' + LAST_COMMIT
@@ -62,93 +69,70 @@ pipeline {
             }
         }
 
-        /*
-        stage('[Master] k8s blue deploy') {
+        stage('[Master] k8s main deploy (최초 배포에만 호출하세요)') {
             when {
                 branch 'master-blue_green'
             }
             steps {
                 script {
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/namespace.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/configmap.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/service.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/hpa.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/blue/deployment.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/namespace.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/configmap.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/service.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/hpa.yaml'
+                  sh 'kubectl apply -f ./src/main/deployment/current/k8s/blue/deployment.yaml'
                 }
             }
         }
 
-        stage('[Master] k8s green deploy check') {
-            when {
-                branch 'master-blue_green'
-            }
-            steps {
-                input message: 'green deploy start', ok: "Yes"
-            }
-        }
-        */
-
-        stage('[Master] k8s green deploy') {
+        stage('[Master] k8s next deploy') {
             when {
                 branch 'master-blue_green'
             }
             steps {
                 script {
                   sh """
-                     sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/green/deployment.yaml
+                      sed -i 's|image: ${PROD_DOCKER_IMAGE_NAME}:.*|image: ${PROD_DOCKER_IMAGE_NAME}:${NOW_TIME}|' ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml
                   """
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/green/deployment.yaml'
-                  sh 'kubectl apply -f ./src/main/deployment/real/k8s/green/service.yaml'
+                  sh "kubectl apply -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
+                  sh "kubectl apply -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
                 }
             }
         }
 
-        stage('[Master] k8s traffic change (blue -> green)') {
+        stage('[Master] k8s traffic change (current -> next)') {
             when {
                 branch 'master-blue_green'
             }
             steps {
                 script {
-                    returnValue = input message: 'traffic change (blue -> green)', ok: "Yes", parameters: [booleanParam(defaultValue: true, name: 'IS_SWITCHED')]
-                    if (returnValue) {
-                        // od-test-prod 네임스페이스에서 od-test-prod-1 이름의 서비스를 찾습니다.
-                        // 서비스의 spec.selector를 blue-green-no=2로 변경하여, 이제 해당 서비스는 blue-green-no 라벨이 2로 설정된 파드를 선택합니다.
-                        sh "kubectl patch -n od-test-prod svc od-test-prod-1 -p '{\"spec\": {\"selector\": {\"blue-green-no\": \"2\"}}}'"
+                    isTrafficChange = input message: "Switch traffic to version ${NEXT_VERSION}?", ok: "Yes"
+                    if (isTrafficChange) {
+                        // od-test-prod 네임스페이스에서 od-test-prod 이름의 서비스를 찾습니다.
+                        // 서비스의 spec.selector를 blue-green 값을 sub 값으로 변경하여 이제 sub 에 배포한 deployment 를 바라보게 합니다
+                    sh "kubectl patch -n od-test-prod svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${NEXT_VERSION}\"}}}'"
                     }
                 }
             }
         }
 
-        stage('[Master] k8s rollback check') {
-            when {
-                branch 'master-blue_green'
-            }
-            steps {
-                script {
-                    returnValue = input message: 'needs rollback?', parameters: [choice(choices: ['done', 'rollback'], name: 'IS_ROLLBACk')]
-                    if (returnValue == "done") {
-                        sh "kubectl delete -f ./src/main/deployment/real/k8s/blue/deployment.yaml"
-                        sh "kubectl delete -f ./src/main/deployment/real/k8s/green/service.yaml"
-                    }
-                    if (returnValue == "rollback") {
-                        sh "kubectl patch -n od-test-prod svc od-test-prod-1 -p '{\"spec\": {\"selector\": {\"blue-green-no\": \"1\"}}}'"
-                        sh "kubectl delete -f ./src/main/deployment/real/k8s/green/deployment.yaml"
-                        sh "kubectl delete -f ./src/main/deployment/real/k8s/green/service.yaml"
-                    }
-                }
-            }
-        }
+stage('[Master] k8s deploy check') {
+    when {
+        branch 'master-blue_green'
     }
+    steps {
+        script {
+            returnValue = input message: 'Needs rollback?', parameters: [choice(choices: ['done', 'rollback'], name: 'IS_ROLLBACK')]
 
-    /*
-    // ------ use Slack Notification plugin
-    post {
-        success {
-            slackSend color: "good", message: "✅Build Success!\\n\\n\\n PROJECT             : ${JOB_NAME}\\n BRANCH             : ${env.BRANCH_NAME}\\n JENKINS URL     : <${env.RUN_DISPLAY_URL}|Blue Ocean Link>\\n LAST_COMMIT  : ${LAST_COMMIT}"
-        }
-        failure {
-            slackSend color: "danger", message: "❌Build Fail!\\n\\n\\n PROJECT             : ${JOB_NAME}\\n BRANCH             : ${env.BRANCH_NAME}\\n JENKINS URL     : <${env.RUN_DISPLAY_URL}|Blue Ocean Link>\\n LAST_COMMIT  : ${LAST_COMMIT}"
+            if (returnValue == "done") {
+                sh "kubectl delete -f ./src/main/deployment/real/k8s/${CURRENT_VERSION}/deployment.yaml"
+                sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
+            }
+
+            if (returnValue == "rollback") {
+                sh "kubectl patch -n od-test-prod svc od-test-prod -p '{\"spec\": {\"selector\": {\"blue-green\": \"${CURRENT_VERSION}\"}}}'"
+                sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/deployment.yaml"
+                sh "kubectl delete -f ./src/main/deployment/real/k8s/${NEXT_VERSION}/service.yaml"
+            }
         }
     }
-    */
 }
